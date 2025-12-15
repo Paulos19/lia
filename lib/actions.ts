@@ -3,6 +3,10 @@
 
 import { signIn } from '@/auth';
 import { AuthError } from 'next-auth';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { propertyFormSchema } from './schemas';
+import { prisma } from './prisma';
 
 export async function login(data: any) {
   try {
@@ -23,4 +27,45 @@ export async function login(data: any) {
     }
     throw error;
   }
+}
+
+export async function createProperty(formData: any) {
+  // 1. Validar no servidor
+  const validatedFields = propertyFormSchema.safeParse(formData)
+
+  if (!validatedFields.success) {
+    return { error: "Campos inválidos. Verifique os dados." }
+  }
+
+  const { title, description, aiContext, location, price, images, features } = validatedFields.data
+
+  // 2. Converter features (string "piscina, garagem" -> array ["piscina", "garagem"])
+  const featuresArray = features 
+    ? features.split(',').map(f => f.trim()).filter(f => f !== "")
+    : []
+
+  try {
+    // 3. Salvar no banco
+    await prisma.property.create({
+      data: {
+        title,
+        description,
+        aiContext: aiContext || "", // Garante string vazia se for null
+        location,
+        price,
+        images,
+        features: featuresArray,
+        status: "AVAILABLE"
+      }
+    })
+
+    // 4. Limpar cache e redirecionar
+    revalidatePath('/admin/properties')
+  } catch (error) {
+    console.error("Erro ao criar imóvel:", error)
+    return { error: "Erro de banco de dados ao salvar imóvel." }
+  }
+
+  // O redirect deve ficar fora do try/catch no Next.js
+  redirect('/admin/properties')
 }
