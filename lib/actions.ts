@@ -69,3 +69,18 @@ export async function createProperty(formData: any) {
   // O redirect deve ficar fora do try/catch no Next.js
   redirect('/admin/properties')
 }
+
+export async function deleteProperty(id: string) {
+  try {
+    await prisma.property.delete({
+      where: { id },
+    })
+    
+    // Atualiza a lista instantaneamente
+    revalidatePath('/admin/properties')
+    return { success: true }
+  } catch (error) {
+    console.error("Erro ao deletar imóvel:", error)
+    return { error: "Não foi possível excluir o imóvel." }
+  }
+}
