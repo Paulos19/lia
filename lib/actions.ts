@@ -110,3 +110,93 @@ export async function deleteVisitSlot(id: string) {
     return { error: "Erro ao excluir." }
   }
 }
+
+export async function updateProperty(id: string, formData: any) {
+  // 1. Validar os dados recebidos com o mesmo schema
+  const validatedFields = propertyFormSchema.safeParse(formData)
+
+  if (!validatedFields.success) {
+    return { error: "Campos inválidos. Verifique os dados." }
+  }
+
+  const { title, description, aiContext, location, price, images, features } = validatedFields.data
+
+  // 2. Converter features (string -> array)
+  const featuresArray = features 
+    ? features.split(',').map(f => f.trim()).filter(f => f !== "")
+    : []
+
+  try {
+    // 3. Update no banco
+    await prisma.property.update({
+      where: { id },
+      data: {
+        title,
+        description,
+        aiContext: aiContext || "",
+        location,
+        price,
+        images,
+        features: featuresArray,
+        // Não alteramos o status aqui por segurança, ou mantemos o atual
+      }
+    })
+
+    // 4. Limpar cache para refletir a mudança na lista e no dashboard
+    revalidatePath('/admin/properties')
+    revalidatePath(`/admin/properties/${id}/edit`)
+    
+  } catch (error) {
+    console.error("Erro ao atualizar imóvel:", error)
+    return { error: "Erro ao atualizar. O imóvel pode não existir mais." }
+  }
+
+  // 5. Redirecionar para a lista
+  redirect('/admin/properties')
+}
+
+export async function deleteLead(id: string) {
+  try {
+    await prisma.lead.delete({ where: { id } })
+    revalidatePath('/admin/leads')
+    revalidatePath('/admin/dashboard') // Atualiza métricas também
+    return { success: true }
+  } catch (error) {
+    console.error("Erro ao deletar lead:", error)
+    return { error: "Erro ao excluir. O lead pode ter agendamentos vinculados." }
+  }
+}
+
+export async function getLiaConfig() {
+  try {
+    const config = await prisma.liaConfig.findUnique({
+      where: { id: "default" }
+    })
+    return config
+  } catch (error) {
+    return null
+  }
+}
+
+export async function updateLiaConfig(data: { systemPrompt: string, isActive: boolean }) {
+  try {
+    await prisma.liaConfig.upsert({
+      where: { id: "default" },
+      update: {
+        systemPrompt: data.systemPrompt,
+        isActive: data.isActive
+      },
+      create: {
+        id: "default",
+        systemPrompt: data.systemPrompt,
+        isActive: data.isActive
+      }
+    })
+    
+    revalidatePath('/admin/brain')
+    return { success: true }
+  } catch (error) {
+    console.error("Erro ao atualizar Cérebro:", error)
+    return { error: "Erro ao salvar configurações." }
+  }
+}
