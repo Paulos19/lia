@@ -1,0 +1,81 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Altere para "mysql" ou "sqlite" se necessário
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String    @unique
+  password      String    // Hash da senha
+  role          Role      @default(USER) // Admin ou User
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// === CATÁLOGO DE IMÓVEIS (Cérebro do RAG) ===
+model Property {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @db.Text // Descrição pública
+  
+  // Campo Oculto para a Lia: Aqui entra "perto da padaria", "vizinhança quieta", etc.
+  aiContext   String?  @db.Text 
+  
+  location    String   // Bairro/Endereço
+  price       Decimal  @db.Decimal(10, 2)
+  
+  images      String[] // Lista de URLs (Vercel Blob)
+  features    String[] // Ex: ["Piscina", "Suite", "Varanda"]
+  
+  status      PropertyStatus @default(AVAILABLE)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// === LEADS (Clientes capturados) ===
+model Lead {
+  id              String   @id @default(uuid())
+  phone           String   @unique // Chave principal (WhatsApp)
+  name            String?
+  
+  interestLevel   InterestLevel @default(COLD)
+  notes           String?       @db.Text // Anotações da IA sobre o cliente
+  
+  createdAt       DateTime @default(now())
+  lastContact     DateTime @default(now())
+}
+
+// === CONFIGURAÇÃO DA LIA ===
+model LiaConfig {
+  id                  String  @id @default("default")
+  systemPrompt        String  @db.Text // A "Personalidade" editável
+  isActive            Boolean @default(true)
+}
+
+enum PropertyStatus {
+  AVAILABLE
+  SOLD
+  RENTED
+  RESERVED
+}
+
+enum InterestLevel {
+  COLD
+  WARM
+  HOT
+  SCHEDULED
+}
