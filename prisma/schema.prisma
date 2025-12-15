@@ -10,14 +10,14 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  name          String?
-  email         String    @unique
-  password      String    // Hash da senha
-  role          Role      @default(USER) // Admin ou User
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id       String  @id @default(uuid())
+  name     String?
+  email    String  @unique
+  password String // Hash da senha
+  role     Role    @default(USER) // Admin ou User
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum Role {
@@ -27,43 +27,44 @@ enum Role {
 
 // === CATÁLOGO DE IMÓVEIS (Cérebro do RAG) ===
 model Property {
-  id          String   @id @default(uuid())
+  id          String @id @default(uuid())
   title       String
-  description String   @db.Text // Descrição pública
-  
+  description String @db.Text // Descrição pública
+
   // Campo Oculto para a Lia: Aqui entra "perto da padaria", "vizinhança quieta", etc.
-  aiContext   String?  @db.Text 
-  
-  location    String   // Bairro/Endereço
-  price       Decimal  @db.Decimal(10, 2)
-  
-  images      String[] // Lista de URLs (Vercel Blob)
-  features    String[] // Ex: ["Piscina", "Suite", "Varanda"]
-  
-  status      PropertyStatus @default(AVAILABLE)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  aiContext String? @db.Text
+
+  location String // Bairro/Endereço
+  price    Decimal @db.Decimal(10, 2)
+
+  images   String[] // Lista de URLs (Vercel Blob)
+  features String[] // Ex: ["Piscina", "Suite", "Varanda"]
+
+  status PropertyStatus @default(AVAILABLE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // === LEADS (Clientes capturados) ===
 model Lead {
-  id              String   @id @default(uuid())
-  phone           String   @unique // Chave principal (WhatsApp)
-  name            String?
-  
-  interestLevel   InterestLevel @default(COLD)
-  notes           String?       @db.Text // Anotações da IA sobre o cliente
-  
-  createdAt       DateTime @default(now())
-  lastContact     DateTime @default(now())
+  id    String  @id @default(uuid())
+  phone String  @unique // Chave principal (WhatsApp)
+  name  String?
+
+  interestLevel InterestLevel @default(COLD)
+  notes         String?       @db.Text // Anotações da IA sobre o cliente
+
+  createdAt   DateTime    @default(now())
+  lastContact DateTime    @default(now())
+  visitSlots  VisitSlot[]
 }
 
 // === CONFIGURAÇÃO DA LIA ===
 model LiaConfig {
-  id                  String  @id @default("default")
-  systemPrompt        String  @db.Text // A "Personalidade" editável
-  isActive            Boolean @default(true)
+  id           String  @id @default("default")
+  systemPrompt String  @db.Text // A "Personalidade" editável
+  isActive     Boolean @default(true)
 }
 
 enum PropertyStatus {
@@ -78,4 +79,25 @@ enum InterestLevel {
   WARM
   HOT
   SCHEDULED
+}
+
+model VisitSlot {
+  id   String   @id @default(uuid())
+  date DateTime // Data e Hora do agendamento
+
+  status SlotStatus @default(AVAILABLE)
+
+  // Relacionamento com o Lead (quem agendou)
+  leadId String?
+  lead   Lead?   @relation(fields: [leadId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum SlotStatus {
+  AVAILABLE // Livre
+  BOOKED // Agendado
+  COMPLETED // Visita realizada
+  CANCELED // Cancelado
 }

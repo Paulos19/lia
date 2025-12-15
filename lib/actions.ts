@@ -84,3 +84,29 @@ export async function deleteProperty(id: string) {
     return { error: "Não foi possível excluir o imóvel." }
   }
 }
+
+export async function createVisitSlot(date: Date) {
+  try {
+    await prisma.visitSlot.create({
+      data: {
+        date: date,
+        status: 'AVAILABLE'
+      }
+    })
+    revalidatePath('/admin/schedule')
+    return { success: true }
+  } catch (error) {
+    console.error("Erro ao criar slot:", error)
+    return { error: "Erro ao criar horário." }
+  }
+}
+
+export async function deleteVisitSlot(id: string) {
+  try {
+    await prisma.visitSlot.delete({ where: { id } })
+    revalidatePath('/admin/schedule')
+    return { success: true }
+  } catch (error) {
+    return { error: "Erro ao excluir." }
+  }
+}
